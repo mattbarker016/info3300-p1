@@ -1,0 +1,97 @@
+<html>
+<head>
+	<script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+
+<body>
+
+<h1 id="title">Project 1</h1>
+<p id="header">Aileen Cai (ac952), Anne Bonalle (aeb295), Matt Barker (mjb485)</p>
+
+<br>
+
+<p>The graph will be shown below!</p>
+
+<p>Problem 1B: I used a log scales to represent worldwide gross and a linear scale for the year each movie was made. The log scale helped spread out clustered data. I added $500M to the max movie gross so the top value wouldn't be cut off the graph. I also added a padding of 1 year to the min and maximum years to provide some padding. The incremented values of 200M and 5 years for a scale helped create a clean scale in Base 10 friendly
+values that can be easily scanned.</p>
+
+<p>Problem 1C: I assigned a random color to each genre once it was parsed by
+storing in a dictionary what genre was what color. I used the IMDB rating with a 
+log scale to change the size of the circle, which helped again differentiate from 
+similar values</p>
+
+<p>Problem 1D: The feedback of an expanding bubble and text indicate which
+	specific data point is being referred to, which helped given how clustered
+	the data points are. However, this approach has issues when the
+	data is near the boundary of the graph, namely that the text could be cut
+off or not be shown entirely.</p>
+
+<br>
+
+<svg id="manhattan"></svg>
+
+<script>
+
+	var blockbusterData = [];
+
+	d3.json("blockbusters.json").then(function(movies) {
+
+		blockbusterData = movies.filter(function(movie) {
+
+			var movie_rank = getNumber(movie.rank_in_year);
+			var movie_year = getNumber(movie.year);
+
+			// Check empty string
+			for (data in movie) {
+				if (data == "") {
+					return false;
+				}
+			}
+
+			// Check valid movie year
+			if (movie_year < 1975 || movie_year > 2018 || isNaN(movie_year)) {
+				return false;
+			}
+
+			// Check ranking between 1-10 and not repeated
+			if (movie_rank < 1 || movie_rank > 10 || isNaN(movie_rank)) {
+				return false;
+			}
+			if (movie.year in yearsRankingsDict) {
+				var rankings = yearsRankingsDict[movie.year]
+				if (rankings.includes(movie.rank_in_year)) {
+					return false;
+				}
+				yearsRankingsDict[movie.year].push(movie.rank_in_year)
+			} else {
+				yearsRankingsDict[movie.year] = [movie.rank_in_year];
+			}
+
+			return true;
+
+		});
+
+		// Update min and max values
+		var minYear = d3.min(blockbusterData, function(movie) {
+			return getNumber(movie.year); 
+		});
+		var maxYear = d3.max(blockbusterData, function(movie) {
+			return getNumber(movie.year); 
+		});
+		var minGross = d3.min(blockbusterData, function(movie) {
+			return getNumber(movie.worldwide_gross); 
+		});
+		var maxGross = d3.max(blockbusterData, function(movie) {
+			return getNumber(movie.worldwide_gross); 
+		});
+		var minImdb = d3.min(blockbusterData, function(movie) {
+			return getNumber(movie.imdb_rating); 
+		});
+		var maxImdb = d3.max(blockbusterData, function(movie) {
+			return getNumber(movie.imdb_rating); 
+		});
+
+		
+	});
+
+</script>
