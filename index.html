@@ -10,21 +10,8 @@
 
 <br>
 
-<p>The graph will be shown below!</p>
-
-<p>Problem 1B: I used a log scales to represent worldwide gross and a linear scale for the year each movie was made. The log scale helped spread out clustered data. I added $500M to the max movie gross so the top value wouldn't be cut off the graph. I also added a padding of 1 year to the min and maximum years to provide some padding. The incremented values of 200M and 5 years for a scale helped create a clean scale in Base 10 friendly
-values that can be easily scanned.</p>
-
-<p>Problem 1C: I assigned a random color to each genre once it was parsed by
-storing in a dictionary what genre was what color. I used the IMDB rating with a 
-log scale to change the size of the circle, which helped again differentiate from 
-similar values</p>
-
-<p>Problem 1D: The feedback of an expanding bubble and text indicate which
-	specific data point is being referred to, which helped given how clustered
-	the data points are. However, this approach has issues when the
-	data is near the boundary of the graph, namely that the text could be cut
-off or not be shown entirely.</p>
+<p>Data is taken from <a href="https://www1.nyc.gov/site/finance/taxes/property-rolling-sales-data.page">NYC.gov</a>. The data represents New York City Sales Data
+from January 2018 to December 2018.</p>
 
 <br>
 
@@ -32,66 +19,160 @@ off or not be shown entirely.</p>
 
 <script>
 
-	var blockbusterData = [];
+	//
+	// Variables & Constants
+	//
 
-	d3.json("blockbusters.json").then(function(movies) {
+	/** 
 
-		blockbusterData = movies.filter(function(movie) {
+	Schema
 
-			var movie_rank = getNumber(movie.rank_in_year);
-			var movie_year = getNumber(movie.year);
+	{
+	
+		"neighborhood_name" : {
 
-			// Check empty string
-			for (data in movie) {
-				if (data == "") {
-					return false;
+			// Average sale price of property sales
+			avg_price: Number
+
+			// Average sq. ft. size of property sales
+			avg_sq_ft: Number 
+
+			// Number of property sales used to find average price
+			price_count : Number (Int)
+
+			// Number of property sales used to find sq. ft.
+			sq_ft_count : Number (Int)
+
+			// The total sum of all sales in filtered data
+			tot_price : Number (Int)
+
+			// The total sum of all square footage in filtered data
+			tot_sq_ft : Number (Int)
+	
+		},
+
+		...
+
+	}
+	*/
+	var property_data = {};
+
+	/** 
+	Some properties don't have sale prices. If true, these data
+	points will be used to calculate the average square foot amount,
+	but won't affect the sale price calculations. If false, these data
+	points will be entirely omitted.
+
+	Reccomended: true
+	*/
+	var countPropertiesWithoutSalePrice = true;
+
+	/**
+	Each property sale has n multiple units. When true, data parsing will
+	divide sq. ft. and cost among the number of units equally, creating
+	n data points based off one initial data point. When false, each property
+	sale will be treated as one data point.
+
+	Reccomended: false
+	*/
+	var useEachUnitAsDataPoint = false;
+
+	//
+	// Helper Functions
+	//
+
+	function getNumber(d) {
+		var n = Number(d.replace(/[^0-9.-]+/g,""));
+		return parseInt(n, 10);
+	}
+
+	function opt(d) {
+		return isNaN(d) ? 0 : d
+	}
+
+	/**
+		avg - Current existing average
+		count - Current existing count of numbers in average
+		val - New value to be added to average
+		amt - The amount of data points that make up `val`. Default 1.
+	*/
+	function updateAverage(avg, count, val, amt=1) {
+
+		return ((avg * count) + val) / (count + amt);
+	}
+
+	//
+	// Main
+	//
+
+	d3.csv("manhattan_sales.csv", function(d) {
+	  	return {
+	    	neighborhood : d["NEIGHBORHOOD"],
+	    	total_units : +d["TOTAL UNITS"],
+	    	sq_ft : getNumber(d["LAND SQUARE FEET"]),
+	    	price : getNumber(d["SALE PRICE"])
+	  	};
+	}).then(function(data) {
+
+		data.forEach( (property, i) => {
+
+			if (property.neighborhood in property_data) {
+
+				var entry = property_data[property.neighborhood];
+				var sq_ft_val = entry.tot_sq_ft;
+				var price_val = entry.tot_price;
+
+				var price_count = entry.price_count;
+				var sq_ft_count = entry.sq_ft_count;
+				var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
+
+				if (countPropertiesWithoutSalePrice || opt(property.price) != 0) {
+					sq_ft_val += property.sq_ft;
+					price_val += opt(property.price);
+					price_count += opt(property.price) == 0 ? 0 : new_amt;
+					sq_ft_count += new_amt;
 				}
-			}
 
-			// Check valid movie year
-			if (movie_year < 1975 || movie_year > 2018 || isNaN(movie_year)) {
-				return false;
-			}
+				property_data[property.neighborhood] = {
+					"tot_sq_ft" : sq_ft_val,
+					"tot_price" : price_val,
+					"price_count" : price_count,
+					"sq_ft_count" : sq_ft_count
+				};
 
-			// Check ranking between 1-10 and not repeated
-			if (movie_rank < 1 || movie_rank > 10 || isNaN(movie_rank)) {
-				return false;
-			}
-			if (movie.year in yearsRankingsDict) {
-				var rankings = yearsRankingsDict[movie.year]
-				if (rankings.includes(movie.rank_in_year)) {
-					return false;
-				}
-				yearsRankingsDict[movie.year].push(movie.rank_in_year)
 			} else {
-				yearsRankingsDict[movie.year] = [movie.rank_in_year];
+
+				var price_count = 0;
+				var sq_ft_count = 0;
+				var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
+
+				if (countPropertiesWithoutSalePrice || opt(property.price) != 0) {
+					price_count = opt(property.price) == 0 ? 0 : new_amt;
+					sq_ft_count = new_amt;
+				}
+
+				property_data[property.neighborhood] = {
+					"tot_sq_ft" : property.sq_ft,
+					"tot_price" : opt(property.price),
+					"sq_ft_count" : sq_ft_count,
+					"price_count" : price_count
+				};
+
 			}
 
-			return true;
-
 		});
 
-		// Update min and max values
-		var minYear = d3.min(blockbusterData, function(movie) {
-			return getNumber(movie.year); 
-		});
-		var maxYear = d3.max(blockbusterData, function(movie) {
-			return getNumber(movie.year); 
-		});
-		var minGross = d3.min(blockbusterData, function(movie) {
-			return getNumber(movie.worldwide_gross); 
-		});
-		var maxGross = d3.max(blockbusterData, function(movie) {
-			return getNumber(movie.worldwide_gross); 
-		});
-		var minImdb = d3.min(blockbusterData, function(movie) {
-			return getNumber(movie.imdb_rating); 
-		});
-		var maxImdb = d3.max(blockbusterData, function(movie) {
-			return getNumber(movie.imdb_rating); 
-		});
+		// Calculate averages
+		for (var key in property_data) {
+			var value = property_data[key];
+			var avg_sq_ft = value.tot_sq_ft / value.sq_ft_count;
+			var avg_price = value.tot_price / value.price_count;
+			property_data[key].avg_sq_ft = avg_sq_ft;
+			property_data[key].avg_price = avg_price;
+		}
 
-		
+		console.log(property_data);
+
 	});
 
 </script>
