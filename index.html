@@ -1,7 +1,21 @@
 <html>
 <head>
 	<script src="https://d3js.org/d3.v5.min.js"></script>
+	<script src="https://d3js.org/topojson.v1.min.js"></script>
 </head>
+<style>
+
+path {
+
+  stroke: #fff;
+  stroke-width: .5;
+  stroke-dasharray: 1;
+  fill: #afafaf;
+
+}
+
+
+</style>
 
 <body>
 
@@ -15,7 +29,8 @@ from January 2018 to December 2018.</p>
 
 <br>
 
-<svg id="manhattan"></svg>
+<svg id="manhattan" width="1500" height="2000" style="background: #F5F5F5"></svg>
+<div id='neighborhoodPopover'> </div>
 
 <script>
 
@@ -23,19 +38,19 @@ from January 2018 to December 2018.</p>
 	// Variables & Constants
 	//
 
-	/** 
+	/**
 
 	Schema
 
 	{
-	
+
 		"neighborhood_name" : {
 
 			// Average sale price of property sales
 			avg_price: Number
 
 			// Average sq. ft. size of property sales
-			avg_sq_ft: Number 
+			avg_sq_ft: Number
 
 			// Number of property sales used to find average price
 			price_count : Number (Int)
@@ -48,7 +63,7 @@ from January 2018 to December 2018.</p>
 
 			// The total sum of all square footage in filtered data
 			tot_sq_ft : Number (Int)
-	
+
 		},
 
 		...
@@ -57,7 +72,7 @@ from January 2018 to December 2018.</p>
 	*/
 	var property_data = {};
 
-	/** 
+	/**
 	Some properties don't have sale prices. If true, these data
 	points will be used to calculate the average square foot amount,
 	but won't affect the sale price calculations. If false, these data
@@ -174,5 +189,58 @@ from January 2018 to December 2018.</p>
 		console.log(property_data);
 
 	});
+
+
+
+
+// add map
+d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson").then(function(nyc) {
+	if (nyc == null || nyc == undefined) {
+			throw error;
+	}
+
+	// loop over all 300 elements in feature array
+	// if properties["borough"] === "Manhattan", add to manhattanDat json
+	console.log('nyc', nyc.features[0].properties["borough"]);
+	console.log("length", nyc.features.length);
+	console.log('nycdata', nyc);
+
+	// the manhattand data json obj is just nyc.features
+	console.log('nycdata', nyc.features);
+
+	function filterNYC(data){
+			manhattanData = []
+			for (i = 0; i < data.features.length; i++){
+				if (data.features[i].properties["borough"] === "Manhattan"){
+						manhattanData.push(data.features[i]);
+				}
+			}
+			console.log('length',manhattanData.length);
+			console.log(manhattanData);
+			return manhattanData;
+		}
+
+		var mData = filterNYC(nyc);
+		console.log('mdata',mData);
+
+	var svg = d3.select("svg#manhattan"),
+				width = +svg.attr("width"),
+				height = +svg.attr("height");
+
+  var path = d3.geoPath()
+
+      .projection(d3.geoConicConformal()
+      .parallels([33, 45])
+      .rotate([96, -39])
+      .fitSize([width, height], nyc));
+
+  svg.selectAll("path")
+      .data(mData)
+      .enter().append("path")
+      .attr("d", path)
+
+});
+
+
 
 </script>
