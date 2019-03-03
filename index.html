@@ -196,7 +196,6 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 	if (nyc == null || nyc == undefined) {
 			throw error;
 	}
-
 	// loop over all 300 elements in feature array
 	// if properties["borough"] === "Manhattan", add to manhattanDat json
 	console.log('nyc', nyc.features[0].properties["borough"]);
@@ -216,17 +215,16 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 			console.log('length',manhattanData.length);
 			console.log(manhattanData);
 			return manhattanData;
-		}
+	};
 
-		var mData = filterNYC(nyc);
-		console.log('mdata',mData);
+	var mData = filterNYC(nyc);
+	console.log('mdata',mData);
 
 	var svg = d3.select("svg#manhattan"),
 				width = +svg.attr("width"),
 				height = +svg.attr("height");
 
   var path = d3.geoPath()
-
       .projection(d3.geoConicConformal()
       .parallels([33, 45])
       .rotate([96, -39])
