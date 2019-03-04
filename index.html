@@ -38,8 +38,8 @@ from January 2018 to December 2018.</p>
 
 <!-- testing -->
 
-<svg id="manhattan" width="700" height="900" style="background: #F5F5F5"></svg>
-<svg id="colorLegend" height="100" width="600" style="background: #fff;" ></svg>
+<svg id="manhattan" width="500" height="900" style="background: #F5F5F5"></svg>
+<svg id="colorLegend" height="100" width="600" style="background: #fff; margin-top:30px" ></svg>
 
 <script>
 
@@ -63,15 +63,16 @@ from January 2018 to December 2018.</p>
 
 		console.log(neighborhoodMapping);
 
-		var svg = d3.select("svg#manhattan"),
-		width = +svg.attr("width"),
-		height = +svg.attr("height");
+		var svg = d3.select("svg#manhattan");
+		var width = svg.attr("width")
+		var height = svg.attr("height")
+	
 
 		var path = d3.geoPath()
 			.projection(d3.geoConicConformal()
 			.parallels([33, 45])
 			.rotate([96, -39])
-			.fitSize([width, height], features));
+			.fitSize([1000, 1500], features));
 
 		svg.selectAll("path")
 			.data(mData)
