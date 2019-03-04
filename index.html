@@ -108,7 +108,7 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 
 // });
 
-
+	// Start of Data Parsing
 
 	//
 	// Variables & Constants
@@ -149,16 +149,6 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 	var property_data = {};
 
 	/**
-	Some properties don't have sale prices. If true, these data
-	points will be used to calculate the average square foot amount,
-	but won't affect the sale price calculations. If false, these data
-	points will be entirely omitted.
-
-	Reccomended: true
-	*/
-	var countPropertiesWithoutSalePrice = true;
-
-	/**
 	Each property sale has n multiple units. When true, data parsing will
 	divide sq. ft. and cost among the number of units equally, creating
 	n data points based off one initial data point. When false, each property
@@ -172,13 +162,13 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 	// Helper Functions
 	//
 
-	function getNumber(d) {
-		var n = Number(d.replace(/[^0-9.-]+/g,""));
-		return parseInt(n, 10);
-	}
-
 	function opt(d) {
 		return isNaN(d) ? 0 : d
+	}
+
+	function getNumber(d) {
+		var n = Number(d.replace(/[^0-9.-]+/g,""));
+		return opt(parseInt(n, 10));
 	}
 
 	/**
@@ -188,7 +178,6 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 		amt - The amount of data points that make up `val`. Default 1.
 	*/
 	function updateAverage(avg, count, val, amt=1) {
-
 		return ((avg * count) + val) / (count + amt);
 	}
 
@@ -215,12 +204,10 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 				var sq_ft_count = entry.sq_ft_count;
 				var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
 
-				if (countPropertiesWithoutSalePrice || opt(property.price) != 0) {
-					sq_ft_val += property.sq_ft;
-					price_val += opt(property.price);
-					price_count += opt(property.price) == 0 ? 0 : new_amt;
-					sq_ft_count += new_amt;
-				}
+				sq_ft_val += property.sq_ft;
+				price_val += property.price;
+				price_count += property.price > 0 ? new_amt : 0;
+				sq_ft_count += property.sq_ft > 0 ? new_amt : 0;
 
 				property_data[property.neighborhood] = {
 					"tot_sq_ft" : sq_ft_val,
@@ -235,14 +222,12 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 				var sq_ft_count = 0;
 				var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
 
-				if (countPropertiesWithoutSalePrice || opt(property.price) != 0) {
-					price_count = opt(property.price) == 0 ? 0 : new_amt;
-					sq_ft_count = new_amt;
-				}
+				price_count = property.price > 0 ? new_amt : 0;
+				sq_ft_count = property.sq_ft > 0 ? new_amt : 0;
 
 				property_data[property.neighborhood] = {
 					"tot_sq_ft" : property.sq_ft,
-					"tot_price" : opt(property.price),
+					"tot_price" : property.price,
 					"sq_ft_count" : sq_ft_count,
 					"price_count" : price_count
 				};
@@ -260,10 +245,13 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 			property_data[key].avg_price = avg_price;
 		}
 
+		//
+		// End of Data Parsing
+		//
 
 
+		console.log('property_data', property_data);
 
-		// console.log('property_data',property_data);
 		// test
 		console.log('neighborhood', Object.keys(property_data)[0]);
 		console.log('PRICEEE', Object.values(property_data)[0]['tot_price']);
