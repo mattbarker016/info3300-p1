@@ -1,16 +1,23 @@
 <html>
 <head>
 	<script src="https://d3js.org/d3.v5.min.js"></script>
+	<script src="https://d3js.org/topojson.v2.min.js"></script>
 </head>
 <style>
 
-path {
-
+/* path {
   stroke: #fff;
   stroke-width: .5;
   stroke-dasharray: 1;
   fill: #afafaf;
+} */
 
+.region {
+	/* fill: red; */
+	/* stroke: none; */
+	stroke: black;
+	stroke-width: 1px;
+	fill: grey;
 }
 
 
@@ -28,9 +35,80 @@ from January 2018 to December 2018.</p>
 
 <br>
 
+
+<!-- testing -->
+
 <svg id="manhattan" width="1500" height="2000" style="background: #F5F5F5"></svg>
 
 <script>
+
+// add map
+d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson").then(function(nyc) {
+	if (nyc == null || nyc == undefined) {
+			throw error;
+	}
+	// loop over all 300 elements in feature array
+	// if properties["borough"] === "Manhattan", add to manhattanDat json
+	// console.log('nyc', nyc.features[0].properties["borough"]);
+	// console.log("length", nyc.features.length);
+	// console.log('nycdata', nyc);
+
+	// the manhattan data json obj is just nyc.features
+	console.log('nycdata', nyc.features);
+
+	function filterNYC(data){
+			manhattanData = []
+			for (i = 0; i < data.features.length; i++){
+
+				// add an id key and value to mData
+				data.features[i]["id"] = i;
+
+				if (data.features[i].properties["borough"] === "Manhattan"){
+						manhattanData.push(data.features[i]);
+				}
+			}
+			console.log('length',manhattanData.length);
+			console.log(manhattanData);
+			return manhattanData;
+	};
+
+	var mData = filterNYC(nyc);
+	// console.log('mdata',mData);
+
+
+
+	// add an id key and value to mData
+	// for (i = 0; i< mData.length; i++){
+	// 	mData["id"] = i;
+	// };
+	// console.log('mdata',mData);
+
+
+
+
+
+	var svg = d3.select("svg#manhattan"),
+				width = +svg.attr("width"),
+				height = +svg.attr("height");
+
+  var path = d3.geoPath()
+      .projection(d3.geoConicConformal()
+      .parallels([33, 45])
+      .rotate([96, -39])
+      .fitSize([width, height], nyc));
+
+  svg.selectAll("path")
+      .data(mData)
+      .enter()
+			.append("path")
+			.attr("class","region")
+      .attr("d", path);
+
+
+
+// });
+
+
 
 	//
 	// Variables & Constants
@@ -128,9 +206,7 @@ from January 2018 to December 2018.</p>
 	}).then(function(data) {
 
 		data.forEach( (property, i) => {
-
 			if (property.neighborhood in property_data) {
-
 				var entry = property_data[property.neighborhood];
 				var sq_ft_val = entry.tot_sq_ft;
 				var price_val = entry.tot_price;
@@ -184,59 +260,79 @@ from January 2018 to December 2018.</p>
 			property_data[key].avg_price = avg_price;
 		}
 
-		console.log(property_data);
+
+
+
+		// console.log('property_data',property_data);
+		// test
+		console.log('neighborhood', Object.keys(property_data)[0]);
+		console.log('PRICEEE', Object.values(property_data)[0]['tot_price']);
+
+		function upperFirstLetter(string) {
+		    return string.charAt(0).toUpperCase() + string.slice(1);
+		}
+		function lowerCaseWords(string) {
+		    return string.replace(/\w\S*/g, function (word) {
+		        return word.charAt(0) + word.slice(1).toLowerCase();
+		    });
+		}
+
+		var propertyLength = Object.keys(property_data).length;
+		// calc avg price/ avg sq ft, store in obj
+		mPriceSqFeet = {};
+		for(i = 0; i < propertyLength; i++){
+			// var neighborhood = Object.keys(property_data)[i];
+			var neighborhood = upperFirstLetter(lowerCaseWords(Object.keys(property_data)[i]));
+			var pricePerFeet = Object.values(property_data)[i]['avg_price'] / Object.values(property_data)[i]['avg_sq_ft'];
+			mPriceSqFeet[neighborhood] = pricePerFeet;
+		};
+		console.log("mPriceSqFeet", mPriceSqFeet);
+
+		// var mPriceSqFeetTest = mPriceSqFeet[3];
+		// console.log('TESTTTTT', mPriceSqFeetTest)
+
+		// console.log('mmmmdata', mData[0]['properties'])
+		// convert the neighborhood info in mdata
+
+		// TODO: make new mdata obj -check if mDataId neighborhoods are in mPricesqfeet
+		mDataId = []
+		for (i = 0; i < mData.length; i++){
+			mDataId.push(mData[i]['properties'])
+		};
+		console.log('FINAL M', mDataId);
+
+
+
+		var mDataIdTest = mDataId.slice(2,4);
+		console.log('vfceecfr',mDataIdTest)
+
+
+
+		let regionId = {};
+		for(i = 0; i < mDataId.length; i++){
+			regionId[i] = mDataId[i]['neighborhood'];
+		}
+		// mDataId.forEach(row => {
+		// 	regionId[] = row.neighborhood;
+		// });
+
+		console.log('regionid',regionId);
+
+
+
+		const colorScale = d3.scaleQuantile()
+                          .domain(d3.values(mPriceSqFeet))
+                          .range(["#fff","#f6fbfc","#adc2da","#8879b3","#762b80"]);
+
+		svg.selectAll(".region")
+			// .style("fill", d => colorScale(mPriceSqFeet[regionId [d.id]]));
+				// .style("fill", d => colorScale(mPriceSqFeet[ mDataIdTest [d.neighborhood]]));
+				// .style("fill", d => colorScale(mPriceSqFeet['Greenwich Village-central']));
+				.style("fill", d => colorScale(mPriceSqFeet[regionId[3]]));
+
 
 	});
 
-
-
-
-// add map
-d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson").then(function(nyc) {
-	if (nyc == null || nyc == undefined) {
-			throw error;
-	}
-	// loop over all 300 elements in feature array
-	// if properties["borough"] === "Manhattan", add to manhattanDat json
-	console.log('nyc', nyc.features[0].properties["borough"]);
-	console.log("length", nyc.features.length);
-	console.log('nycdata', nyc);
-
-	// the manhattand data json obj is just nyc.features
-	console.log('nycdata', nyc.features);
-
-	function filterNYC(data){
-			manhattanData = []
-			for (i = 0; i < data.features.length; i++){
-				if (data.features[i].properties["borough"] === "Manhattan"){
-						manhattanData.push(data.features[i]);
-				}
-			}
-			console.log('length',manhattanData.length);
-			console.log(manhattanData);
-			return manhattanData;
-	};
-
-	var mData = filterNYC(nyc);
-	console.log('mdata',mData);
-
-	var svg = d3.select("svg#manhattan"),
-				width = +svg.attr("width"),
-				height = +svg.attr("height");
-
-  var path = d3.geoPath()
-      .projection(d3.geoConicConformal()
-      .parallels([33, 45])
-      .rotate([96, -39])
-      .fitSize([width, height], nyc));
-
-  svg.selectAll("path")
-      .data(mData)
-      .enter().append("path")
-      .attr("d", path)
-
 });
-
-
 
 </script>
