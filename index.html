@@ -42,69 +42,38 @@ from January 2018 to December 2018.</p>
 
 <script>
 
-// add map
-d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson").then(function(nyc) {
-	if (nyc == null || nyc == undefined) {
-			throw error;
-	}
-	// loop over all 300 elements in feature array
-	// if properties["borough"] === "Manhattan", add to manhattanDat json
-	// console.log('nyc', nyc.features[0].properties["borough"]);
-	// console.log("length", nyc.features.length);
-	// console.log('nycdata', nyc);
+let dataURL = "http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson"
 
-	// the manhattan data json obj is just nyc.features
-	console.log('nycdata', nyc.features);
+	manhattanData = []
+	neighborhoodMapping = {}
 
-	function filterNYC(data){
-			manhattanData = []
-			for (i = 0; i < data.features.length; i++){
+	d3.json(dataURL).then(function(features) {
 
-				// add an id key and value to mData
-				data.features[i]["id"] = i;
-
-				if (data.features[i].properties["borough"] === "Manhattan"){
-						manhattanData.push(data.features[i]);
-				}
+		manhattanData = features["features"].filter(function (feature) {
+			if (feature == null || feature == undefined) {
+				return false;
 			}
-			console.log('length',manhattanData.length);
-			console.log(manhattanData);
-			return manhattanData;
-	};
+			return feature.properties.borough == "Manhattan";
+		});
 
-	var mData = filterNYC(nyc);
-	// console.log('mdata',mData);
+		var mData = manhattanData;
 
+		var svg = d3.select("svg#manhattan"),
+		width = +svg.attr("width"),
+		height = +svg.attr("height");
 
+		var path = d3.geoPath()
+			.projection(d3.geoConicConformal()
+			.parallels([33, 45])
+			.rotate([96, -39])
+			.fitSize([width, height], features));
 
-	// add an id key and value to mData
-	// for (i = 0; i< mData.length; i++){
-	// 	mData["id"] = i;
-	// };
-	// console.log('mdata',mData);
-
-
-
-
-
-	var svg = d3.select("svg#manhattan"),
-				width = +svg.attr("width"),
-				height = +svg.attr("height");
-
-  var path = d3.geoPath()
-      .projection(d3.geoConicConformal()
-      .parallels([33, 45])
-      .rotate([96, -39])
-      .fitSize([width, height], nyc));
-
-  svg.selectAll("path")
-      .data(mData)
-      .enter()
+		svg.selectAll("path")
+			.data(mData)
+			.enter()
 			.append("path")
 			.attr("class","region")
-      .attr("d", path);
-
-
+			.attr("d", path);
 
 // });
 
@@ -194,6 +163,10 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 	  	};
 	}).then(function(data) {
 
+		data.filter(function (d) {
+
+		});
+
 		data.forEach( (property, i) => {
 			if (property.neighborhood in property_data) {
 				var entry = property_data[property.neighborhood];
@@ -236,25 +209,31 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 
 		});
 
-		// Calculate averages
+		// Calculate data
+		var min_ratio = Number.MAX_SAFE_INTEGER;
+		var max_ratio = 0;
 		for (var key in property_data) {
 			var value = property_data[key];
 			var avg_sq_ft = value.tot_sq_ft / value.sq_ft_count;
 			var avg_price = value.tot_price / value.price_count;
 			property_data[key].avg_sq_ft = avg_sq_ft;
 			property_data[key].avg_price = avg_price;
+			property_data[key].ratio = avg_price / avg_sq_ft
+			if (property_data[key].ratio < min_ratio) {
+				min_ratio = property_data[key].ratio
+			}
+			if (property_data[key].ratio > max_ratio) {
+				max_ratio = property_data[key].ratio
+			}
 		}
+
+
 
 		//
 		// End of Data Parsing
 		//
 
-
 		console.log('property_data', property_data);
-
-		// test
-		console.log('neighborhood', Object.keys(property_data)[0]);
-		console.log('PRICEEE', Object.values(property_data)[0]['tot_price']);
 
 		function upperFirstLetter(string) {
 		    return string.charAt(0).toUpperCase() + string.slice(1);
@@ -265,58 +244,16 @@ d3.json("http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/reso
 		    });
 		}
 
-		var propertyLength = Object.keys(property_data).length;
-		// calc avg price/ avg sq ft, store in obj
-		mPriceSqFeet = {};
-		for(i = 0; i < propertyLength; i++){
-			// var neighborhood = Object.keys(property_data)[i];
-			var neighborhood = upperFirstLetter(lowerCaseWords(Object.keys(property_data)[i]));
-			var pricePerFeet = Object.values(property_data)[i]['avg_price'] / Object.values(property_data)[i]['avg_sq_ft'];
-			mPriceSqFeet[neighborhood] = pricePerFeet;
-		};
-		console.log("mPriceSqFeet", mPriceSqFeet);
-
-		// var mPriceSqFeetTest = mPriceSqFeet[3];
-		// console.log('TESTTTTT', mPriceSqFeetTest)
-
-		// console.log('mmmmdata', mData[0]['properties'])
-		// convert the neighborhood info in mdata
-
-		// TODO: make new mdata obj -check if mDataId neighborhoods are in mPricesqfeet
-		mDataId = []
-		for (i = 0; i < mData.length; i++){
-			mDataId.push(mData[i]['properties'])
-		};
-		console.log('FINAL M', mDataId);
-
-
-
-		var mDataIdTest = mDataId.slice(2,4);
-		console.log('vfceecfr',mDataIdTest)
-
-
-
-		let regionId = {};
-		for(i = 0; i < mDataId.length; i++){
-			regionId[i] = mDataId[i]['neighborhood'];
-		}
-		// mDataId.forEach(row => {
-		// 	regionId[] = row.neighborhood;
-		// });
-
-		console.log('regionid',regionId);
-
-
-
 		const colorScale = d3.scaleQuantile()
-                          .domain(d3.values(mPriceSqFeet))
-                          .range(["#fff","#f6fbfc","#adc2da","#8879b3","#762b80"]);
+                          	.domain([min_ratio, max_ratio])
+                          	.range(["#fff","#f6fbfc","#adc2da","#8879b3","#762b80"]);
 
 		svg.selectAll(".region")
-			// .style("fill", d => colorScale(mPriceSqFeet[regionId [d.id]]));
-				// .style("fill", d => colorScale(mPriceSqFeet[ mDataIdTest [d.neighborhood]]));
-				// .style("fill", d => colorScale(mPriceSqFeet['Greenwich Village-central']));
-				.style("fill", d => colorScale(mPriceSqFeet[regionId[3]]));
+			.style("fill", function(d) {
+				var key = d.properties.neighborhood.toUpperCase();
+				var num = (key in property_data) ? property_data[key].ratio : min_ratio;
+				return colorScale(num);
+			});
 
 
 	});
