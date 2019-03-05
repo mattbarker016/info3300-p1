@@ -33,11 +33,60 @@
 
 	<script>
 
-		var manhattanData = []
-
 		var SqFt = "SqFt";
 		var Price = "Price";
 		var Ratio = "Ratio";
+
+		//
+		// MAIN
+		//
+
+		d3.json("data/nyc-neighborhoods.json").then(function(features) {
+
+			mData = features["features"].filter(function (feature) {
+				if (feature == null || feature == undefined) {
+					return false;
+				}
+				return feature.properties.borough == "Manhattan";
+			});
+
+			createManhattanSVG(SqFt, mData, features);
+			createManhattanSVG(Price, mData, features);
+			createManhattanSVG(Ratio, mData, features);
+
+		});
+
+		d3.csv("data/manhattan_sales.csv", function(d) {
+			var neighborhood = neighborhoodMapping(d["NEIGHBORHOOD"]);
+			return {
+				neighborhood : neighborhood,
+				total_units : +d["TOTAL UNITS"],
+				sq_ft : getNumber(d["LAND SQUARE FEET"]),
+				price : getNumber(d["SALE PRICE"])
+			};
+		}).then(function(data) {
+
+			processData(data);
+			console.log('property_data', property_data);
+
+			let sqFtColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			addColor(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale);
+			createLegend(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale, isMoney=false);
+
+			let priceColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			addColor(Price, min_price, max_price, priceColorScale);
+			createLegend(Price, min_price, max_price, priceColorScale, isMoney=true);
+
+			let ratioColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			addColor(Ratio, min_ratio, max_ratio, ratioColorScale);
+			createLegend(Ratio, min_ratio, max_ratio, ratioColorScale, isMoney=true);
+
+		});
+
+
+		//
+		// SHARED SVG FUNCTIONS
+		//
 
 		function createManhattanSVG(id, data, features) {
 
@@ -128,28 +177,18 @@
 
 		}
 
-		d3.json("data/nyc-neighborhoods.json").then(function(features) {
-
-			mData = features["features"].filter(function (feature) {
-				if (feature == null || feature == undefined) {
-					return false;
-				}
-				return feature.properties.borough == "Manhattan";
-			});
-
-			createManhattanSVG(SqFt, mData, features);
-			createManhattanSVG(Price, mData, features);
-			createManhattanSVG(Ratio, mData, features);
-
-		});
-
-		// Start of Data Parsing
-
 		//
-		// Variables & Constants
+		// DATA PARSING
 		//
 
 		var property_data = {};
+
+		var min_price = Number.MAX_SAFE_INTEGER;
+		var max_price = 0;
+		var min_sq_ft = Number.MAX_SAFE_INTEGER;
+		var max_sq_ft = 0;
+		var min_ratio = Number.MAX_SAFE_INTEGER;
+		var max_ratio = 0;
 
 		/**
  		Each property sale has n multiple units. When true, data parsing will
@@ -197,49 +236,7 @@
 			"Washington Heights Upper" : "Washington Heights"
 		};
 
-		//
-		// Helper Functions
-		//
-
-		function opt(d) {
-			return isNaN(d) ? 0 : d
-		}
-
-		function getNumber(d) {
-			var n = Number(d.replace(/[^0-9.-]+/g,""));
-			return opt(parseInt(n, 10));
-		}
-
-		function upperFirstLetter(string) {
-			return string.charAt(0).toUpperCase() + string.slice(1);
-		}
-		function lowerCaseWords(string) {
-			return string.replace(/\w\S*/g, function (word) {
-				return word.charAt(0) + word.slice(1).toLowerCase();
-			});
-		}
-
-		function toTitleCase(str) {
-			return str.replace(/\w\S*/g, function(txt){
-				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-			});
-		}
-
-		function removeNonLetters(str) {
-			return str.replace(/[^A-Za-z\s-]/g, "");
-		}
-
-		/// Map numbers data (n) to map data (m) for neighborhood data sets
-		function neighborhoodMapping(input) {
-			var neighborhood = removeNonLetters(toTitleCase(input));
-			if (neighborhood in neighborhoodDict) {
-				return neighborhoodDict[neighborhood];
-			} else {
-				return neighborhood;
-			}
-		}
-
-		function calculateData(data) {
+		function processData(data) {
 			data.forEach( (property, i) => {
 				if (property.neighborhood in property_data) {
 					var entry = property_data[property.neighborhood];
@@ -281,16 +278,7 @@
 				}
 
 			});
-		}
 
-		var min_price = Number.MAX_SAFE_INTEGER;
-		var max_price = 0;
-		var min_sq_ft = Number.MAX_SAFE_INTEGER;
-		var max_sq_ft = 0;
-		var min_ratio = Number.MAX_SAFE_INTEGER;
-		var max_ratio = 0;
-
-		function synthesizeData() {
 			for (var key in property_data) {
 
 				var value = property_data[key];
@@ -327,35 +315,47 @@
 
 		}
 
-		d3.csv("data/manhattan_sales.csv", function(d) {
-			var neighborhood = neighborhoodMapping(d["NEIGHBORHOOD"]);
-			return {
-				neighborhood : neighborhood,
-				total_units : +d["TOTAL UNITS"],
-				sq_ft : getNumber(d["LAND SQUARE FEET"]),
-				price : getNumber(d["SALE PRICE"])
-			};
-		}).then(function(data) {
+		//
+		// Helper Functions
+		//
 
-			calculateData(data);
-			synthesizeData();
+		function opt(d) {
+			return isNaN(d) ? 0 : d
+		}
 
-			console.log('property_data', property_data);
+		function getNumber(d) {
+			var n = Number(d.replace(/[^0-9.-]+/g,""));
+			return opt(parseInt(n, 10));
+		}
 
-			let sqFtColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
-			addColor(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale);
-			createLegend(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale, isMoney=false);
+		function upperFirstLetter(string) {
+			return string.charAt(0).toUpperCase() + string.slice(1);
+		}
+		function lowerCaseWords(string) {
+			return string.replace(/\w\S*/g, function (word) {
+				return word.charAt(0) + word.slice(1).toLowerCase();
+			});
+		}
 
-			let priceColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
-			addColor(Price, min_price, max_price, priceColorScale);
-			createLegend(Price, min_price, max_price, priceColorScale, isMoney=true);
+		function toTitleCase(str) {
+			return str.replace(/\w\S*/g, function(txt){
+				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+			});
+		}
 
-			let ratioColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
-			addColor(Ratio, min_ratio, max_ratio, ratioColorScale);
-			createLegend(Ratio, min_ratio, max_ratio, ratioColorScale, isMoney=true);
+		function removeNonLetters(str) {
+			return str.replace(/[^A-Za-z\s-]/g, "");
+		}
 
-		});
-
+		/// Map numbers data (n) to map data (m) for neighborhood data sets
+		function neighborhoodMapping(input) {
+			var neighborhood = removeNonLetters(toTitleCase(input));
+			if (neighborhood in neighborhoodDict) {
+				return neighborhoodDict[neighborhood];
+			} else {
+				return neighborhood;
+			}
+		}
 
 	</script>
 
