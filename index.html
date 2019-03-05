@@ -12,23 +12,26 @@
 		<p id="header">Aileen Cai (ac952), Anne Bonalle (aeb295), Matt Barker (mjb485)</p>
 
 		<br>
-
+<div class="container">
 		<h2>Average Square Footage of Properties in Manhattan</h2>
 		<svg class="manhattan" id="manhattanSqFt"></svg>
 		<svg class="legend" id="legendSqFt"></svg>
-
+</div>
+<div class="container">
 		<h2>Average Sale Price of Properties in Manhattan</h2>
 		<svg class="manhattan" id="manhattanPrice"></svg>
 		<svg class="legend" id="legendPrice"></svg>
-
+</div>
+<div class="container">
 		<h2>Dollar per Square Foot of Properties in Manhattan</h2>
 		<svg class="manhattan" id="manhattanRatio"></svg>
 		<svg class="legend" id="legendRatio"></svg>
+</div>
 
 		<hr>
 
 		<p>Data is taken from <a href="https://www1.nyc.gov/site/finance/taxes/property-rolling-sales-data.page">NYC.gov</a>. The data represents New York City Sales Data from January 2018 to December 2018.</p>
-
+</hr>
 	</body>
 
 	<script>
@@ -47,7 +50,13 @@
 				if (feature == null || feature == undefined) {
 					return false;
 				}
-				return feature.properties.borough == "Manhattan";
+				return feature.properties.borough == "Manhattan"
+				&& feature.properties.neighborhood != "Ellis Island"
+				&& feature.properties.neighborhood != "Governors Island"
+				&& feature.properties.neighborhood != "Randall's Island"
+				&& feature.properties.neighborhood != "Roosevelt Island"
+				&& feature.properties.neighborhood != "Marble Hill"
+				&& feature.properties.neighborhood != "Liberty Island"  ;
 			});
 
 			createManhattanSVG(SqFt, mData, features);
@@ -159,11 +168,11 @@
 
 			legend.append("g")
 				.attr("class", "color axis")
-				.attr("transform","translate("+(20)+","+(barHeight+5)+")")
+				.attr("transform","translate("+(0)+","+(barHeight+5)+")")
 				.call(barAxis);
 
 			let bar = legend.append("g")
-				.attr("transform", "translate("+(20)+","+(0)+")");
+				.attr("transform", "translate("+(0)+","+(0)+")");
 
 			let colorScale = d3.scaleQuantile()
 				.domain([min, max])
@@ -378,19 +387,20 @@
 	}
 
 	.legend {
-		width: 400px;
+		width: 380px;
 		height: 70px;
 		background: #fff;
 		margin-top: 30px;
 	}
 
  	hr {
- 		margin: 40px;
+		width: 100%;
  	}
 
  	div	{
  		float: left;
  		margin: 0;
+		width: 400px;
  	}
 
 	</style>
