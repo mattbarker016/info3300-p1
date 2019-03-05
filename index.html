@@ -1,300 +1,407 @@
 <html>
-<head>
-	<script src="https://d3js.org/d3.v5.min.js"></script>
-	<script src="https://d3js.org/topojson.v2.min.js"></script>
-</head>
-<style>
 
-/* path {
-  stroke: #fff;
-  stroke-width: .5;
-  stroke-dasharray: 1;
-  fill: #afafaf;
-} */
+	<head>
+		<script src="https://d3js.org/d3.v5.min.js"></script>
+		<script src="https://d3js.org/topojson.v2.min.js"></script>
+	</head>
 
-.region {
-	/* fill: red; */
-	/* stroke: none; */
-	stroke: black;
-	stroke-width: 1px;
-	fill: grey;
-}
+	<body>
 
+		<h1>Manhattan Property Visualization</h1>
+		<h3>INFO 3300: Project 1</h3>
+		<p id="header">Aileen Cai (ac952), Anne Bonalle (aeb295), Matt Barker (mjb485)</p>
 
-</style>
+		<br>
 
-<body>
+		<h2>Average Square Footage of Properties in Manhattan</h2>
+		<svg class="manhattan" id="manhattanSqFt"></svg>
+		<svg class="legend" id="legendSqFt"></svg>
 
-<h1 id="title">Project 1</h1>
-<p id="header">Aileen Cai (ac952), Anne Bonalle (aeb295), Matt Barker (mjb485)</p>
+		<h2>Average Sale Price of Properties in Manhattan</h2>
+		<svg class="manhattan" id="manhattanPrice"></svg>
+		<svg class="legend" id="legendPrice"></svg>
 
-<br>
+		<h2>Dollar per Square Foot of Properties in Manhattan</h2>
+		<svg class="manhattan" id="manhattanRatio"></svg>
+		<svg class="legend" id="legendRatio"></svg>
 
-<p>Data is taken from <a href="https://www1.nyc.gov/site/finance/taxes/property-rolling-sales-data.page">NYC.gov</a>. The data represents New York City Sales Data
-from January 2018 to December 2018.</p>
+		<hr>
 
-<br>
+		<p>Data is taken from <a href="https://www1.nyc.gov/site/finance/taxes/property-rolling-sales-data.page">NYC.gov</a>. The data represents New York City Sales Data from January 2018 to December 2018.</p>
 
+	</body>
 
-<!-- testing -->
+	<script>
 
-<svg id="manhattan" width="500" height="900" style="background: #F5F5F5"></svg>
-<svg id="colorLegend" height="100" width="600" style="background: #fff; margin-top:30px" ></svg>
+		var manhattanData = []
 
-<script>
+		var SqFt = "SqFt";
+		var Price = "Price";
+		var Ratio = "Ratio";
 
-	manhattanData = []
-	neighborhoodMapping = {}
+		function createManhattanSVG(id, data, features) {
 
-	d3.json("data/nyc-neighborhoods.json").then(function(features) {
-
-		manhattanData = features["features"].filter(function (feature) {
-			if (feature == null || feature == undefined) {
-				return false;
-			}
-			return feature.properties.borough == "Manhattan";
-		});
-
-		var mData = manhattanData
-
-		neighborhoodMapping = manhattanData.map(function (d) {
-			return d.properties.neighborhood;
-		});
-
-		console.log(neighborhoodMapping);
-
-		var svg = d3.select("svg#manhattan");
-		var width = svg.attr("width")
-		var height = svg.attr("height")
-	
-
-		var path = d3.geoPath()
+			var svg = d3.select("svg#manhattan" + id);
+			
+			var path = d3.geoPath()
 			.projection(d3.geoConicConformal()
-			.parallels([33, 45])
-			.rotate([96, -39])
-			.fitSize([1000, 1500], features));
+				.parallels([33, 45])
+				.rotate([96, -39])
+				.fitSize([1000, 1500], features));
 
-		svg.selectAll("path")
-			.data(mData)
-			.enter()
-			.append("path")
-			.attr("class","region")
-			.attr("d", path);
+			svg.selectAll("path")
+				.data(data)
+				.enter()
+				.append("path")
+				.attr("transform","translate("+(-150)+","+(-128)+")")
+				.attr("class","region")
+				.attr("d", path);
 
-// });
+			return svg;
 
-	// Start of Data Parsing
+		}
 
-	//
-	// Variables & Constants
-	//
+		function addColor(id, min, max, colorArray) {
+			let colorScale = d3.scaleQuantile() 
+				.domain([min, max])
+				.range(colorArray);
 
-	/**
+			d3.select("#manhattan" + id).selectAll(".region")
+				.style("fill", function(d) {
+					var key = toTitleCase(d.properties.neighborhood);
+					if (key in property_data) {
+						switch (id) {
+							case SqFt:
+								return colorScale(property_data[key].avg_sq_ft)
+								break;
+							case Price:
+								return colorScale(property_data[key].avg_price)
+								break;
+							default:
+								return colorScale(property_data[key].ratio);
+						}
+					} else {
+						return "green";
+					}
+				});
+		}
 
-	Schema
+		function createLegend(id, min, max, colorArray, isMoney) {
 
-	{
+			const legend = d3.select("svg#legend" + id);
+			const legendWidth = getNumber(legend.style("width"));
+			const legendHeight = getNumber(legend.style("height"));
+			const barHeight = 40;
+			const stepSize = 1;
 
-		"neighborhood_name" : {
+			const pixelScale = d3.scaleLinear()
+				.domain([0, legendWidth-40])
+				.range([min, max]);
 
-			// Average sale price of property sales
-			avg_price: Number
+			const barScale = d3.scaleLinear()
+				.domain([min, max])
+				.range([0, legendWidth-40]);
+			
+			const barAxis = d3.axisBottom(barScale)
+				.ticks(8, d3.format(isMoney ? "$f" : "d"));
 
-			// Average sq. ft. size of property sales
-			avg_sq_ft: Number
+			legend.append("g")
+				.attr("class", "color axis")
+				.attr("transform","translate("+(20)+","+(barHeight+5)+")")
+				.call(barAxis);
 
-			// Number of property sales used to find average price
-			price_count : Number (Int)
+			let bar = legend.append("g")
+				.attr("transform", "translate("+(20)+","+(0)+")");
 
-			// Number of property sales used to find sq. ft.
-			sq_ft_count : Number (Int)
+			let colorScale = d3.scaleQuantile() 
+				.domain([min, max])
+				.range(colorArray);
 
-			// The total sum of all sales in filtered data
-			tot_price : Number (Int)
+			for (let i=0; i<legendWidth-40; i=i+stepSize) {
+				bar.append("rect")
+					.attr("x", i)
+					.attr("y", 0)
+					.attr("width", stepSize)
+					.attr("height", barHeight)
+					.style("fill", colorScale(pixelScale(i)));
+			}
 
-			// The total sum of all square footage in filtered data
-			tot_sq_ft : Number (Int)
+		}
 
-		},
+		d3.json("data/nyc-neighborhoods.json").then(function(features) {
 
-		...
+			mData = features["features"].filter(function (feature) {
+				if (feature == null || feature == undefined) {
+					return false;
+				}
+				return feature.properties.borough == "Manhattan";
+			});
 
-	}
-	*/
-	var property_data = {};
+			createManhattanSVG(SqFt, mData, features);
+			createManhattanSVG(Price, mData, features);
+			createManhattanSVG(Ratio, mData, features);
 
-	/**
-	Each property sale has n multiple units. When true, data parsing will
-	divide sq. ft. and cost among the number of units equally, creating
-	n data points based off one initial data point. When false, each property
-	sale will be treated as one data point.
-
-	Reccomended: false
-	*/
-	var useEachUnitAsDataPoint = false;
-
-	//
-	// Helper Functions
-	//
-
-	function opt(d) {
-		return isNaN(d) ? 0 : d
-	}
-
-	function getNumber(d) {
-		var n = Number(d.replace(/[^0-9.-]+/g,""));
-		return opt(parseInt(n, 10));
-	}
-
-	function upperFirstLetter(string) {
-		return string.charAt(0).toUpperCase() + string.slice(1);
-	}
-	function lowerCaseWords(string) {
-		return string.replace(/\w\S*/g, function (word) {
-			return word.charAt(0) + word.slice(1).toLowerCase();
 		});
-	}
 
-	function toTitleCase(str) {
-		return str.replace(/\w\S*/g, function(txt){
-			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-		});
-	}
+		// Start of Data Parsing
 
-	/**
-		avg - Current existing average
-		count - Current existing count of numbers in average
-		val - New value to be added to average
-		amt - The amount of data points that make up `val`. Default 1.
-	*/
-	function updateAverage(avg, count, val, amt=1) {
-		return ((avg * count) + val) / (count + amt);
-	}
+		//
+		// Variables & Constants
+		//
 
-	//
-	// Main
-	//
+		var property_data = {};
 
-	d3.csv("data/manhattan_sales.csv", function(d) {
-	  	return {
-	    	neighborhood : toTitleCase(d["NEIGHBORHOOD"]),
-	    	total_units : +d["TOTAL UNITS"],
-	    	sq_ft : getNumber(d["LAND SQUARE FEET"]),
-	    	price : getNumber(d["SALE PRICE"])
-	  	};
-	}).then(function(data) {
+		/**
+ 		Each property sale has n multiple units. When true, data parsing will
+ 		divide sq. ft. and cost among the number of units equally, creating
+ 		n data points based off one initial data point. When false, each property
+ 		sale will be treated as one data point.
 
-		data.forEach( (property, i) => {
-			if (property.neighborhood in property_data) {
-				var entry = property_data[property.neighborhood];
-				var sq_ft_val = entry.tot_sq_ft;
-				var price_val = entry.tot_price;
+ 		Reccomended: false
+ 		*/
+ 		var useEachUnitAsDataPoint = false;
 
-				var price_count = entry.price_count;
-				var sq_ft_count = entry.sq_ft_count;
-				var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
+		// Missing Regions
 
-				sq_ft_val += property.sq_ft;
-				price_val += property.price;
-				price_count += property.price > 0 ? new_amt : 0;
-				sq_ft_count += property.sq_ft > 0 ? new_amt : 0;
+		// Battery Park City (m)
+		// Governors Island (m)
+		// Liberty Island (m)
+		// NoHo (m)
+		// Nolita (m)
+		// Randall's Island (m)
+		// Stuyvesant Town (m)
+		// Theater District (m)
 
-				property_data[property.neighborhood] = {
-					"tot_sq_ft" : sq_ft_val,
-					"tot_price" : price_val,
-					"price_count" : price_count,
-					"sq_ft_count" : sq_ft_count
-				};
+		// Mapping of "manhattan-sales.csv" data to "nyc-neighborhoods.json" data
+		var neighborhoodDict = {
+			"Alphabet City" : "East Village",
+			"Clinton" : "Hell's Kitchen",
+			"Fashion" : "Midtown",
+			"Financial" : "Financial District",
+			"Flatiron" : "Flatiron District",
+			"Greenwich Village-central" : "Greenwich Village",
+			"Greenwich Village-west" : "Greenwich Village",
+			"Harlem-central" : "Harlem",
+			"Harlem-east" : "East Harlem",
+			"Harlem-upper" : "Harlem",
+			"Harlem-west" : "Harlem",
+			"Javits Center" : "Hell's Kitchen",
+			"Manhattan Valley" : "Upper West Side",
+			"Midtown Cbd" : "Midtown",
+			"Midtown East" : "Midtown",
+			"Midtown West" : "Midtown",
+			"Soho" : "SoHo",
+			"Upper East Side -" : "Upper East Side",
+			"Upper West Side -" : "Upper West Side",
+			"Washington Heights Lower" : "Washington Heights",
+			"Washington Heights Upper" : "Washington Heights"
+		};
 
+		//
+		// Helper Functions
+		//
+
+		function opt(d) {
+			return isNaN(d) ? 0 : d
+		}
+
+		function getNumber(d) {
+			var n = Number(d.replace(/[^0-9.-]+/g,""));
+			return opt(parseInt(n, 10));
+		}
+
+		function upperFirstLetter(string) {
+			return string.charAt(0).toUpperCase() + string.slice(1);
+		}
+		function lowerCaseWords(string) {
+			return string.replace(/\w\S*/g, function (word) {
+				return word.charAt(0) + word.slice(1).toLowerCase();
+			});
+		}
+
+		function toTitleCase(str) {
+			return str.replace(/\w\S*/g, function(txt){
+				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+			});
+		}
+
+		function removeNonLetters(str) {
+			return str.replace(/[^A-Za-z\s-]/g, "");
+		}
+
+		/// Map numbers data (n) to map data (m) for neighborhood data sets
+		function neighborhoodMapping(input) {
+			var neighborhood = removeNonLetters(toTitleCase(input));
+			if (neighborhood in neighborhoodDict) {
+				return neighborhoodDict[neighborhood];
 			} else {
-
-				var price_count = 0;
-				var sq_ft_count = 0;
-				var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
-
-				price_count = property.price > 0 ? new_amt : 0;
-				sq_ft_count = property.sq_ft > 0 ? new_amt : 0;
-
-				property_data[property.neighborhood] = {
-					"tot_sq_ft" : property.sq_ft,
-					"tot_price" : property.price,
-					"sq_ft_count" : sq_ft_count,
-					"price_count" : price_count
-				};
-
-			}
-
-		});
-
-		// Calculate data
-		var min_ratio = Number.MAX_SAFE_INTEGER;
-		var max_ratio = 0;
-		for (var key in property_data) {
-			var value = property_data[key];
-			var avg_sq_ft = value.tot_sq_ft / value.sq_ft_count;
-			var avg_price = value.tot_price / value.price_count;
-			property_data[key].avg_sq_ft = avg_sq_ft;
-			property_data[key].avg_price = avg_price;
-			property_data[key].ratio = avg_price / avg_sq_ft
-			if (property_data[key].ratio < min_ratio) {
-				min_ratio = property_data[key].ratio
-			}
-			if (property_data[key].ratio > max_ratio) {
-				max_ratio = property_data[key].ratio
+				return neighborhood;
 			}
 		}
 
+		function calculateData(data) {
+			data.forEach( (property, i) => {
+				if (property.neighborhood in property_data) {
+					var entry = property_data[property.neighborhood];
+					var sq_ft_val = entry.tot_sq_ft;
+					var price_val = entry.tot_price;
 
+					var price_count = entry.price_count;
+					var sq_ft_count = entry.sq_ft_count;
+					var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
 
-		//
-		// End of Data Parsing
-		//
+					sq_ft_val += property.sq_ft;
+					price_val += property.price;
+					price_count += property.price > 0 ? new_amt : 0;
+					sq_ft_count += property.sq_ft > 0 ? new_amt : 0;
 
-		console.log('property_data', property_data);
+					property_data[property.neighborhood] = {
+						"tot_sq_ft" : sq_ft_val,
+						"tot_price" : price_val,
+						"price_count" : price_count,
+						"sq_ft_count" : sq_ft_count
+					};
 
-		const colorScale = d3.scaleQuantile()
-                          	.domain([min_ratio, max_ratio])
-                          	.range(["#fcfbfd","#fcfbfd","#fbfafc","#fbfafc","#faf9fc","#faf9fc","#faf8fb","#f9f8fb","#f9f7fb","#f8f7fb","#f8f7fa","#f7f6fa","#f7f6fa","#f7f5fa","#f6f5f9","#f6f4f9","#f5f4f9","#f5f3f9","#f4f3f8","#f4f2f8","#f4f2f8","#f3f2f8","#f3f1f7","#f2f1f7","#f2f0f7","#f1f0f7","#f1eff6","#f0eff6","#f0eef6","#efeef5","#efedf5","#eeedf5","#eeecf5","#edecf4","#edebf4","#ecebf4","#ebeaf3","#ebe9f3","#eae9f3","#eae8f3","#e9e8f2","#e8e7f2","#e8e7f2","#e7e6f1","#e7e5f1","#e6e5f1","#e5e4f0","#e5e4f0","#e4e3f0","#e3e2ef","#e3e2ef","#e2e1ef","#e1e1ee","#e1e0ee","#e0dfee","#dfdfed","#dedeed","#dedded","#ddddec","#dcdcec","#dbdbec","#dbdaeb","#dadaeb","#d9d9ea","#d8d8ea","#d7d7ea","#d7d7e9","#d6d6e9","#d5d5e8","#d4d4e8","#d3d3e8","#d2d3e7","#d2d2e7","#d1d1e6","#d0d0e6","#cfcfe5","#cecee5","#cdcee5","#cccde4","#cbcce4","#cbcbe3","#cacae3","#c9c9e2","#c8c8e2","#c7c7e1","#c6c6e1","#c5c5e0","#c4c4e0","#c3c3df","#c2c3df","#c1c2de","#c0c1de","#bfc0dd","#bebfdd","#bebedc","#bdbddc","#bcbcdb","#bbbbda","#babada","#b9b9d9","#b8b8d9","#b7b7d8","#b6b5d8","#b5b4d7","#b4b3d6","#b3b2d6","#b2b1d5","#b1b0d5","#b0afd4","#afaed4","#aeadd3","#aeacd2","#adabd2","#acaad1","#aba9d1","#aaa8d0","#a9a7cf","#a8a6cf","#a7a5ce","#a6a4ce","#a5a3cd","#a4a2cd","#a3a1cc","#a2a0cb","#a19fcb","#a09eca","#9f9dca","#9e9cc9","#9e9ac9","#9d9ac8","#9c99c8","#9b98c7","#9a97c7","#9996c6","#9895c6","#9794c5","#9693c5","#9592c4","#9491c4","#9390c3","#928fc3","#918ec2","#908dc2","#908cc1","#8f8bc1","#8e8ac0","#8d89c0","#8c88bf","#8b87bf","#8a86be","#8985be","#8884bd","#8883bd","#8782bc","#8680bc","#857fbb","#847eba","#837dba","#827cb9","#827bb9","#817ab8","#8079b8","#7f77b7","#7e76b6","#7e75b6","#7d74b5","#7c73b4","#7b71b4","#7b70b3","#7a6fb3","#796eb2","#786cb1","#786bb1","#776ab0","#7668af","#7567af","#7566ae","#7465ad","#7363ad","#7362ac","#7261ab","#715fab","#705eaa","#705ca9","#6f5ba8","#6e5aa8","#6e58a7","#6d57a6","#6c56a6","#6c54a5","#6b53a4","#6a52a4","#6950a3","#694fa2","#684ea2","#674ca1","#674ba0","#664aa0","#65489f","#65479e","#64469e","#63449d","#63439c","#62429c","#61409b","#613f9a","#603e9a","#5f3c99","#5e3b99","#5e3a98","#5d3897","#5c3797","#5c3696","#5b3595","#5a3395","#5a3294","#593194","#582f93","#582e92","#572d92","#562b91","#562a91","#552990","#54288f","#54268f","#53258e","#52248e","#52238d","#51218c","#50208c","#501f8b","#4f1e8b","#4e1c8a","#4e1b8a","#4d1a89","#4c1988","#4c1788","#4b1687","#4a1587","#4a1486","#491286","#481185","#481084","#470f84","#460d83","#460c83","#450b82","#440a82","#440981","#430780","#420680","#42057f","#41047f","#40027e","#40017e","#3f007d"]);
+				} else {
 
-		svg.selectAll(".region")
-			.style("fill", function(d) {
-				var key = toTitleCase(d.properties.neighborhood);
-				var num = (key in property_data) ? property_data[key].ratio : min_ratio;
-				return colorScale(num);
+					var price_count = 0;
+					var sq_ft_count = 0;
+					var new_amt = useEachUnitAsDataPoint ? property.total_units : 1;
+
+					price_count = property.price > 0 ? new_amt : 0;
+					sq_ft_count = property.sq_ft > 0 ? new_amt : 0;
+
+					property_data[property.neighborhood] = {
+						"tot_sq_ft" : property.sq_ft,
+						"tot_price" : property.price,
+						"sq_ft_count" : sq_ft_count,
+						"price_count" : price_count
+					};
+
+				}
+
 			});
+		}
 
-// add a legend
-		const legend = d3.select("#colorLegend");
-		const legendWidth = legend.attr("width");
-		const legendHeight = legend.attr("height");
-		const barHeight = 40;
-		const stepSize = 1;
+		var min_price = Number.MAX_SAFE_INTEGER;
+		var max_price = 0;
+		var min_sq_ft = Number.MAX_SAFE_INTEGER;
+		var max_sq_ft = 0;
+		var min_ratio = Number.MAX_SAFE_INTEGER;
+		var max_ratio = 0;
 
-		const pixelScale = d3.scaleLinear().domain([0, legendWidth-40]).range([min_ratio, max_ratio]);
-		const barScale = d3.scaleLinear().domain([min_ratio, max_ratio]).range([0, legendWidth-40]);
-		const barAxis = d3.axisBottom(barScale).ticks(8, d3.format("$f"));
-		legend.append("g")
-			.attr("class", "color axis")
-			.attr("transform","translate("+(20)+","+(barHeight+5)+")")
-			.call(barAxis);
+		function synthesizeData() {
+			for (var key in property_data) {
 
-		let bar = legend.append("g").attr("transform", "translate("+(20)+","+(0)+")");
+				var value = property_data[key];
+				var avg_sq_ft = value.tot_sq_ft / value.sq_ft_count;
+				var avg_price = value.tot_price / value.price_count;
+				property_data[key].avg_sq_ft = avg_sq_ft;
+				property_data[key].avg_price = avg_price;
+				property_data[key].ratio = avg_price / avg_sq_ft
 
-		for (let i=0; i<legendWidth-40; i=i+stepSize) {
-      bar.append("rect")
-        .attr("x", i)
-        .attr("y", 0)
-        .attr("width", stepSize)
-        .attr("height",barHeight)
-        .style("fill", colorScale(pixelScale(i)));
+				// sq_ft
+				if (property_data[key].avg_sq_ft < min_sq_ft) {
+					min_sq_ft = property_data[key].avg_sq_ft
+				}
+				if (property_data[key].avg_sq_ft > max_sq_ft) {
+					max_sq_ft = property_data[key].avg_sq_ft
+				}
+
+				// price
+				if (property_data[key].avg_price < min_price) {
+					min_price = property_data[key].avg_price
+				}
+				if (property_data[key].avg_price > max_price) {
+					max_price = property_data[key].avg_price
+				}
+
+				// ratio
+				if (property_data[key].ratio < min_ratio) {
+					min_ratio = property_data[key].ratio
+				}
+				if (property_data[key].ratio > max_ratio) {
+					max_ratio = property_data[key].ratio
+				}
 			}
 
-	});
+		}
+
+		d3.csv("data/manhattan_sales.csv", function(d) {
+			var neighborhood = neighborhoodMapping(d["NEIGHBORHOOD"]);
+			return {
+				neighborhood : neighborhood,
+				total_units : +d["TOTAL UNITS"],
+				sq_ft : getNumber(d["LAND SQUARE FEET"]),
+				price : getNumber(d["SALE PRICE"])
+			};
+		}).then(function(data) {
+
+			calculateData(data);
+			synthesizeData();
+
+			console.log('property_data', property_data);
+
+			let sqFtColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			addColor(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale);
+			createLegend(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale, isMoney=false);
+
+			let priceColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			addColor(Price, min_price, max_price, priceColorScale);
+			createLegend(Price, min_price, max_price, priceColorScale, isMoney=true);
+
+			let ratioColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			addColor(Ratio, min_ratio, max_ratio, ratioColorScale);
+			createLegend(Ratio, min_ratio, max_ratio, ratioColorScale, isMoney=true);
+
+		});
 
 
+	</script>
 
 
+	<style>
 
-});
+	.region {
+		stroke: black;
+		stroke-width: 1px;
+		fill: grey;
+	}
 
-</script>
+	.manhattan {
+		width: 340px;
+		height: 680px;
+		background: #F5F5F5;
+	}
+
+	.legend {
+		width: 400px;
+		height: 70px;
+		background: #fff;
+		margin-top: 30px;
+	}
+
+	.container {
+ 		width: 500px;
+ 	}
+
+ 	p {
+ 		margin: 0;
+ 	}
+
+ 	hr {
+ 		margin: 40px;
+ 	}
+ 	
+ 	svg {
+ 		margin: 0;
+ 	}
+
+ 	div	{
+ 		float: left;
+ 		margin: 0;
+ 	}
+
+	</style>
+
+</html>
