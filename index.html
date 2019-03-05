@@ -69,15 +69,15 @@
 			processData(data);
 			console.log('property_data', property_data);
 
-			let sqFtColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			let sqFtColorScale = ["#ffefe7","#fcbea5","#fb8263","#ed4030","#b91419","#67000d"];
 			addColor(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale);
 			createLegend(SqFt, min_sq_ft, max_sq_ft, sqFtColorScale, isMoney=false);
 
-			let priceColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			let priceColorScale = ["#eff6fc","#c8ddf0","#8abfdd","#4592c7","#1561a8","#08306b"];
 			addColor(Price, min_price, max_price, priceColorScale);
 			createLegend(Price, min_price, max_price, priceColorScale, isMoney=true);
 
-			let ratioColorScale = ["#EB7D6B","#CF6D5D","#B35E4F","#984F42","#7E4036","#64322A"];
+			let ratioColorScale = ["#e3e2ef","#b9b9d9","#8b87bf","#65489f","#501f8b","#3f007d"];
 			addColor(Ratio, min_ratio, max_ratio, ratioColorScale);
 			createLegend(Ratio, min_ratio, max_ratio, ratioColorScale, isMoney=true);
 
@@ -91,7 +91,7 @@
 		function createManhattanSVG(id, data, features) {
 
 			var svg = d3.select("svg#manhattan" + id);
-			
+
 			var path = d3.geoPath()
 			.projection(d3.geoConicConformal()
 				.parallels([33, 45])
@@ -111,7 +111,7 @@
 		}
 
 		function addColor(id, min, max, colorArray) {
-			let colorScale = d3.scaleQuantile() 
+			let colorScale = d3.scaleQuantile()
 				.domain([min, max])
 				.range(colorArray);
 
@@ -150,9 +150,12 @@
 			const barScale = d3.scaleLinear()
 				.domain([min, max])
 				.range([0, legendWidth-40]);
-			
+
 			const barAxis = d3.axisBottom(barScale)
-				.ticks(8, d3.format(isMoney ? "$f" : "d"));
+				.ticks(8, d3.format(isMoney ? "$s" : "s"));
+
+				// console.log('TYPE', typeof Number(isMoney));
+
 
 			legend.append("g")
 				.attr("class", "color axis")
@@ -162,7 +165,7 @@
 			let bar = legend.append("g")
 				.attr("transform", "translate("+(20)+","+(0)+")");
 
-			let colorScale = d3.scaleQuantile() 
+			let colorScale = d3.scaleQuantile()
 				.domain([min, max])
 				.range(colorArray);
 
