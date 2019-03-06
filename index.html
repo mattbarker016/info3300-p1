@@ -8,30 +8,32 @@
 	<body>
 
 		<h1>Manhattan Property Visualization</h1>
-		<h3>INFO 3300: Project 1</h3>
-		<p id="header">Aileen Cai (ac952), Anne Bonalle (aeb295), Matt Barker (mjb485)</p>
+		<p>Created by Aileen Cai (ac952), Anne Bonalle (aeb295), Matt Barker (mjb485)</p>
+		<p><i>Note: This visualization is best viewed in a full-screen browser.</i></p>
 
 		<br>
-<div class="container">
-		<h2>Average Square Footage of Properties in Manhattan</h2>
-		<svg class="manhattan" id="manhattanSqFt"></svg>
-		<svg class="legend" id="legendSqFt"></svg>
-</div>
-<div class="container">
-		<h2>Average Sale Price of Properties in Manhattan</h2>
-		<svg class="manhattan" id="manhattanPrice"></svg>
-		<svg class="legend" id="legendPrice"></svg>
-</div>
-<div class="container">
-		<h2>Dollar per Square Foot of Properties in Manhattan</h2>
-		<svg class="manhattan" id="manhattanRatio"></svg>
-		<svg class="legend" id="legendRatio"></svg>
-</div>
+		<div class="container">
+			<h2>Average Square Footage of Properties in Manhattan</h2>
+			<svg class="manhattan" id="manhattanSqFt"></svg>
+			<svg class="legend" id="legendSqFt"></svg>
+		</div>
+		<div class="container">
+			<h2>Average Sale Price of Properties in Manhattan</h2>
+			<svg class="manhattan" id="manhattanPrice"></svg>
+			<svg class="legend" id="legendPrice"></svg>
+		</div>
+		<div class="container">
+			<h2>Dollar per Square Foot of Properties in Manhattan</h2>
+			<svg class="manhattan" id="manhattanRatio"></svg>
+			<svg class="legend" id="legendRatio"></svg>
+		</div>
 
 		<hr>
 
 		<p>Data is taken from <a href="https://www1.nyc.gov/site/finance/taxes/property-rolling-sales-data.page">NYC.gov</a>. The data represents New York City Sales Data from January 2018 to December 2018.</p>
-</hr>
+
+		</hr>
+
 	</body>
 
 	<script>
@@ -99,6 +101,9 @@
 
 		function createManhattanSVG(id, data, features) {
 
+			// Inspiration & Concept
+			// http://bl.ocks.org/pstuffa/38111aa2e3077baa67f1d0c42df9bf08
+
 			var svg = d3.select("svg#manhattan" + id);
 
 			var path = d3.geoPath()
@@ -111,7 +116,7 @@
 				.data(data)
 				.enter()
 				.append("path")
-				.attr("transform","translate("+(-150)+","+(-128)+")")
+				.attr("transform","translate("+(-150)+","+(-150)+")")
 				.attr("class","region")
 				.attr("d", path);
 
@@ -139,7 +144,7 @@
 								return colorScale(property_data[key].ratio);
 						}
 					} else {
-						return "green";
+						return "lightgray";
 					}
 				});
 		}
@@ -162,9 +167,6 @@
 
 			const barAxis = d3.axisBottom(barScale)
 				.ticks(8, d3.format(isMoney ? "$s" : "s"));
-
-				// console.log('TYPE', typeof Number(isMoney));
-
 
 			legend.append("g")
 				.attr("class", "color axis")
@@ -331,6 +333,8 @@
 		// Helper Functions
 		//
 
+		// Many of these functions were found through StackOverflow and other forums.
+
 		function opt(d) {
 			return isNaN(d) ? 0 : d
 		}
@@ -382,7 +386,7 @@
 
 	.manhattan {
 		width: 340px;
-		height: 680px;
+		height: 600px;
 		background: #F5F5F5;
 	}
 
